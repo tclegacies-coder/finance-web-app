@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Finance Workbook</title>
+  <script src="assets/xlsx.full.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+    .tabs { display: flex; background: #333; }
+    .tab { padding: 14px 20px; color: #fff; cursor: pointer; }
+    .tab.active { background: #555; }
+    .content { padding: 20px; }
+    table { border-collapse: collapse; width: 100%; }
+    table td, table th { border: 1px solid #aaa; padding: 8px; }
+    table input { width: 100%; border: none; background: transparent; }
+    .save-btn { margin-top: 15px; padding: 10px 20px; background: #28a745; color: #fff; border: none; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+<div class="tabs">
+  <div class="tab active" onclick="openSheet('sheet1')">Budget & Savings Plan 2026</div>
+  <div class="tab" onclick="openSheet('sheet2')">Income Tracker</div>
+</div>
+
+<div class="content">
+  <div id="sheet1" class="sheet"></div>
+  <div id="sheet2" class="sheet" style="display:none"></div>
+</div>
+
+<script>
+// Load the Excel files
+async function loadSheet(url, containerId) {
+  const response = await fetch(url);
+  const data = await response.arrayBuffer();
+  const workbook = XLSX.read(data);
+  const sheetName = workbook.SheetNames[0];
+  const sheet = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
+
+  renderTable(sheet, containerId);
+}
+
+function renderTable(sheetData, containerId) {
+  const container = document.getElementById(containerId);
+  let html = '<table>';
+  sheetData.forEach((row, rIndex) => {
+    html += '<tr>';
+    row.forEach((cell, cIndex) => {
+      html += `<td><input value="${cell || ''}" onchange="updateCell('${containerId}', ${rIndex}, ${cIndex}, this.value)" /></td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</table>';
+
+  html += `<button class='save-btn' onclick="downloadExcel('${containerId}')">Download Updated File</button>`;
+
+  container.innerHTML = html;
+
+  window[containerId + 'Data'] = sheetData;
+}
+
+function updateCell(sheetId, row, col, value) {
+  window[sheetId + 'Data'][row][col] = value;
+}
+
+function downloadExcel(sheetId) {
+  const ws = XLSX.utils.aoa_to_sheet(window[sheetId + 'Data']);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+  XLSX.writeFile(wb, sheetId + '.xlsx');
+}
+
+function openSheet(sheetName) {
+  document.querySelectorAll('.sheet').forEach(s => s.style.display = 'none');
+  document.getElementById(sheetName).style.display = 'block';
+
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+// Load both sheets
+loadSheet('assets/Budget.xlsx', 'sheet1');
+loadSheet('assets/Income.xlsx', 'sheet2');
+</script>
+
+</body>
+</html>
